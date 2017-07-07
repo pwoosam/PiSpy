@@ -3,10 +3,39 @@
   <head>
     <title>PiSpy</title>
     <meta charset="utf-8">
-    <script type="text/javascript" src="//code.jquery.com/jquery-2.1.4.min.js"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <style>
+      iframe {
+        border: none;
+      }
+      .btn {
+        margin: 5px;
+      }
+    </style>
   </head>
   <body>
-      <iframe src="/map.html" style="width: 40%; border: none">Your browser does not support iframes.</iframe>
-      <iframe src="/frame.html" style="width: 40%; border: none">Your browser does not support iframes.</iframe>
+      <div class="container-fluid">
+        <div class='row'>
+            <div class="col-sm-6 embed-responsive embed-responsive-16by9">
+              <iframe class="embed-responsive-item" src="/map.html">Your browser does not support iframes.</iframe>
+            </div>
+            <div class='col-sm-6'>
+              <div class="row embed-responsive embed-responsive-16by9">
+                <iframe class="embed-responsive-item" src="/frame.html">Your browser does not support iframes.</iframe>
+              </div>
+              <div class='row'>
+                  <div class="col-sm-6 text-center">
+                    <button class="btn">Stop video feed</button><br>
+                    <button class="btn">Resume video feed</button>
+                  </div>
+                  <div class="col-sm-6 text-center">
+                    <button class="btn">Stop audio feed</button><br>
+                    <button class="btn">Resume audio feed</button>
+                  </div>
+              </div>
+            </div>
+        </div>
+      </div>
   </body>
 </html>

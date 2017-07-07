@@ -2,6 +2,9 @@ import socketio
 import eventlet
 from flask import Flask, render_template
 
+SERVER_IP = 'localhost'  # Enter local IP of web server here
+SERVER_PORT = 5000  # Enter the local port that web server is using
+
 sio = socketio.Server()
 app = Flask(__name__)
 
@@ -21,7 +24,7 @@ def gps_map():
 @app.route('/frame.html')
 def video_stream():
     '''Render frames for video stream.'''
-    return render_template('/frame.html')
+    return render_template('frame.html')
 
 
 @sio.on('connect')
@@ -43,7 +46,7 @@ def receive_gps_coordinates(sid, latitude, longitude):
 @sio.on('frame')
 def receive_frame(sid, frame_data):
     '''Broadcast frame on 'frame' channel.'''
-    print('frame: ', frame_data)
+    sio.emit('frame', data=frame_data)
 
 
 @sio.on('audio')
@@ -59,4 +62,4 @@ def disconnect(sid):
 
 if __name__ == '__main__':
     app = socketio.Middleware(sio, app)
-    eventlet.wsgi.server(eventlet.listen(('', 5000)), app)
+    eventlet.wsgi.server(eventlet.listen((SERVER_IP, SERVER_PORT)), app)

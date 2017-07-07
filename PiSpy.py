@@ -5,12 +5,13 @@ import cv2
 import os
 import pyaudio
 import pynmea2
+import scipy.misc
 from socketIO_client import SocketIO
 import serial
 import time
 
-SERVER_IP = ''  # Enter public IP of web server here
-SERVER_PORT = 80  # Replace 80 with the port web server is using
+SERVER_IP = 'localhost'  # Enter public IP of web server here
+SERVER_PORT = 5000  # Enter the port that web server is using
 
 
 class ultimate_gps():
@@ -58,15 +59,15 @@ def log_data(recv_parsed):
         gpslog.write('{}, {}, {}\n'.format(recv_parsed.timestamp,
                                            recv_parsed.longitude,
                                            recv_parsed.latitude))
-    print('log')
 
 
 def emit_frame(cam):
     frame = cam.read()[1]
-    frame_enc = cv2.imencode('.png', frame)[1]
-    # frame_b64 = base64.encodestring(frame_enc)
-    # socketIO.emit('frame', 'poof')
-    print('frame')
+    frame = scipy.misc.imresize(frame, 25)
+    enc_param = [int(cv2.IMWRITE_JPEG_QUALITY), 40]
+    frame_enc = cv2.imencode('.jpeg', frame, enc_param)[1].tostring()
+    frame_b64 = base64.encodebytes(frame_enc)
+    socketIO.emit('frame', frame_b64.decode())
 
 
 def frame_loop(sleep_time=1/100):
@@ -77,9 +78,8 @@ def frame_loop(sleep_time=1/100):
 
 
 def emit_gps(recv, recv_parsed):
-    # socketIO.emit('gps', recv)
-    # socketIO.emit('coordinates', recv_parsed.latitude, recv_parsed.longitude)
-    print('gps')
+    socketIO.emit('gps', recv)
+    socketIO.emit('coordinates', recv_parsed.latitude, recv_parsed.longitude)
 
 
 def gps_loop():
@@ -91,13 +91,12 @@ def gps_loop():
 
 def audio_callback(in_data, frame_count, time_info, status):
     # socketIO.emit('audio' in_data)
-    print('audio')
     return None, pyaudio.paContinue
 
 
 if __name__ == '__main__':
     gps = ultimate_gps()
-    # socketIO = SocketIO(SERVER_IP, SERVER_PORT)
+    socketIO = SocketIO(SERVER_IP, SERVER_PORT)
     pya = pyaudio.PyAudio()
     audio_stream = pya.open(format=pyaudio.paInt16,
                             channels=2,
