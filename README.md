@@ -2,7 +2,7 @@
 **GPS tracker with live audio and video**<br>
 Get GPS coordinates as well as audio and video feed from your Raspberry Pi.
 
-# Materials used
+## Materials used
 * Raspberry Pi 3
 * Adafruit Ultimate GPS Breakout
 * Raspberry Pi Camera Module V2
@@ -10,7 +10,7 @@ Get GPS coordinates as well as audio and video feed from your Raspberry Pi.
 * Huawei E397u-53 4G LTE USB Modem
 * Ting GSM SIM card
 
-# Installation Instructions
+## Installation Instructions
 **To setup Python 3 and it’s dependencies**
 ```
 sudo apt install python3 python3-pip python3-numpy python3-scipy python3-serial cmake
@@ -86,10 +86,10 @@ rm opencv.zip
 
 **To enable the GPS**<br>
 * for rpi3 or zero<br>
-add sudo systemctl stop serial-getty@ttyS0.service to /etc/rc.local
+add sudo systemctl stop serial-getty@ttyS0.service to /etc/rc.local<br>
 add sudo systemctl disable serial-getty@ttyS0.service to /etc/rc.local
 * for rpi2 or 1<br>
-add sudo systemctl stop serial-getty@ttyAMA0.service to /etc/rc.local
+add sudo systemctl stop serial-getty@ttyAMA0.service to /etc/rc.local<br>
 add sudo systemctl disable serial-getty@ttyAMA0.service to /etc/rc.local
 * for all<br>
 remove console=serial0,115200 and/or anything similar from /boot/cmdline.txt
