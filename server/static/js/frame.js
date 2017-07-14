@@ -9,7 +9,7 @@ $(document).ready(function(){
     });
     socket.on('frame', function(frame_data) {
         console.log('updating frame');
-        html = '<img class="img-responsive" src="data:image/jpeg;base64, ' + frame_data + '">'
-        $('#frame img').replaceWith(html)
+        html = '<img class="img-responsive" src="data:image/jpeg;base64, ' + frame_data + '">';
+        $('#frame img').replaceWith(html);
     });
 });

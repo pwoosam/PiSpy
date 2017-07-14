@@ -2,7 +2,7 @@ import socketio
 import eventlet
 from flask import Flask, render_template
 
-SERVER_IP = 'localhost'  # Enter local IP of web server here
+SERVER_IP = '0.0.0.0'  # Enter local IP of web server here
 SERVER_PORT = 5000  # Enter the local port that web server is using
 
 sio = socketio.Server()
@@ -52,7 +52,7 @@ def receive_frame(sid, frame_data):
 @sio.on('audio')
 def receive_audio(sid, audio_data):
     '''Broadcast audio on 'audio' channel.'''
-    pass
+    sio.emit('audio', data=audio_data)
 
 
 @sio.on('disconnect')
