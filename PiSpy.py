@@ -2,9 +2,11 @@
 import base64
 import concurrent.futures
 import cv2
+import numpy as np
 import os
 import pyaudio
 import pynmea2
+import requests
 import scipy.misc
 from socketIO_client import SocketIO
 import serial
@@ -30,7 +32,7 @@ class ultimate_gps():
     def reconnect(self):
         self.close()
         self.connect()
-        self.data_gen
+        self.data_gen = self._data_generator()
 
     def close(self):
         self._gps_uart.close()
@@ -41,9 +43,13 @@ class ultimate_gps():
             if self._gps_uart.inWaiting():
                 recv = self._gps_uart.readline().decode()
                 if '$GPGGA' in recv:
-                    yield recv, pynmea2.parse(recv)
+                    nmea_data = pynmea2.parse(recv)
+                    if nmea_data.is_valid:
+                        yield recv, nmea_data
+                    else:
+                        time.sleep(1)
             else:
-                time.sleep(0.01)
+                time.sleep(0.5)
 
 
 def create_logfile(logfile='gpslog.csv'):
@@ -63,9 +69,9 @@ def log_data(recv_parsed):
 
 def emit_frame(cam):
     frame = cam.read()[1]
-    frame = scipy.misc.imresize(frame, 25)
-    enc_param = [int(cv2.IMWRITE_JPEG_QUALITY), 40]
-    frame_enc = cv2.imencode('.jpeg', frame, enc_param)[1].tostring()
+    frame_sm = scipy.misc.imresize(frame, 30)
+    enc_param = [int(cv2.IMWRITE_JPEG_QUALITY), 50]
+    frame_enc = cv2.imencode('.jpeg', frame_sm, enc_param)[1].tostring()
     frame_b64 = base64.encodebytes(frame_enc)
     socketIO.emit('frame', frame_b64.decode())
 
@@ -73,38 +79,103 @@ def emit_frame(cam):
 def frame_loop(sleep_time=1/100):
     cam = cv2.VideoCapture(0)
     while True:
-        emit_frame(cam)
+        try:
+            emit_frame(cam)
+        except Exception as err:
+            print(err)
         time.sleep(sleep_time)
 
 
 def emit_gps(recv, recv_parsed):
-    socketIO.emit('gps', recv)
-    socketIO.emit('coordinates', recv_parsed.latitude, recv_parsed.longitude)
+    try:
+        socketIO.emit('gps', recv)
+        socketIO.emit('coordinates', recv_parsed.latitude,
+                      recv_parsed.longitude)
+    except Exception as err:
+        print('emit_gps', err)
 
 
 def gps_loop():
     while True:
-        recv, recv_parsed = next(gps.data_gen)
-        log_data(recv_parsed)
-        emit_gps(recv, recv_parsed)
+        try:
+            recv, recv_parsed = next(gps.data_gen)
+        except Exception as err:
+            print('gps_loop', err.__class__.__name__, err)
+            gps.reconnect()
+        else:
+            log_data(recv_parsed)
+            emit_gps(recv, recv_parsed)
 
 
 def audio_callback(in_data, frame_count, time_info, status):
-    # socketIO.emit('audio' in_data)
+    audio_data = np.fromstring(in_data, dtype='int8').tolist()
+    print(len(in_data))
+    try:
+        socketIO.emit('audio', audio_data)
+    except Exception as err:
+        print('emit_audio', err)
     return None, pyaudio.paContinue
+
+
+def audio_loop():
+    while True:
+        pya = pyaudio.PyAudio()
+        chunk_length = 1
+        audio_stream = pya.open(format=pyaudio.paInt8,
+                                channels=1,
+                                rate=44100,
+                                input=True,
+                                frames_per_buffer=int(44100 * chunk_length),
+                                stream_callback=audio_callback)
+        audio_stream.start_stream()
+        while audio_stream.is_active():
+            time.sleep(0.1)
+        audio_stream.stop_stream()
+        audio_stream.close()
+        pya.terminate()
+
+
+def wait_for_connection():
+    first_attempt = True
+    while True:
+        try:
+            resp = requests.get(('http://' + str(SERVER_IP) + ':' +
+                                 str(SERVER_PORT) + '/'), timeout=5)
+        except:
+            time.sleep(1)
+            if first_attempt:
+                print('not connected to internet')
+                first_attempt = False
+        else:
+            break
+    print('connected to internet')
+
+
+def maintain_connection():
+    global connected, socketIO
+    try:
+        resp = requests.get(('http://' + str(SERVER_IP) + ':' +
+                             str(SERVER_PORT) + '/'), timeout=5)
+    except:
+        print('lost connection')
+        connected = False
+        wait_for_connection()
+        socketIO.close()
+        socketIO = SocketIO(SERVER_IP, SERVER_PORT)
+    else:
+        connected = True
 
 
 if __name__ == '__main__':
     gps = ultimate_gps()
-    socketIO = SocketIO(SERVER_IP, SERVER_PORT)
-    pya = pyaudio.PyAudio()
-    audio_stream = pya.open(format=pyaudio.paInt16,
-                            channels=2,
-                            rate=48000,
-                            input=True,
-                            frames_per_buffer=2048,
-                            stream_callback=audio_callback)
+    wait_for_connection()
+    connected = True
+    socketIO = SocketIO(SERVER_IP, SERVER_PORT, timeout=2)
     create_logfile()
-    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-        executor.submit(frame_loop)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
         executor.submit(gps_loop)
+        executor.submit(frame_loop)
+        executor.submit(audio_loop)
+        while True:
+            maintain_connection()
+            time.sleep(5)
